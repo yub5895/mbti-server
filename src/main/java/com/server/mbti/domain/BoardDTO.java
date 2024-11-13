@@ -17,5 +17,6 @@ public class BoardDTO {
     private String writer;
     private String content;
     private String mbtiType;
+    private String url;
     private LocalDateTime writeDate = LocalDateTime.now();
 }

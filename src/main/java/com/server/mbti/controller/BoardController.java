@@ -35,9 +35,9 @@ public class BoardController {
 
     // 게시글 조회
     @GetMapping("/board")
-    public ResponseEntity viewAll(@RequestParam(name="keyword", required = false) String keyword, @RequestParam(name="page", defaultValue = "1") int page) {
+    public ResponseEntity viewAll(@RequestParam(name="keyword", required = false) String keyword, @RequestParam(name="page", defaultValue = "1") int page, @RequestParam(name="mbti", required = false) String mbti) {
 
-        Sort sort = Sort.by("writeDate").descending();
+        Sort sort = Sort.by("no").descending();
         Pageable pageable = PageRequest.of(page-1, 20, sort);
 
         BooleanBuilder builder = new BooleanBuilder();
@@ -48,6 +48,11 @@ public class BoardController {
             BooleanExpression expression = qBoard.title.like("%" + keyword + "%");
 
             builder.and(expression);
+        }
+
+        if (mbti != null && !mbti.isEmpty()) {
+            BooleanExpression mbtiExpression = qBoard.mbtiType.eq(mbti);
+            builder.and(mbtiExpression);
         }
 
         Page<Board> list = service.viewAll(builder, pageable);
@@ -61,19 +66,20 @@ public class BoardController {
             return ResponseEntity.badRequest().body(null);
         }
 
-        if (dto.getBoardFile() == null || dto.getBoardFile().isEmpty()) {
-            return ResponseEntity.badRequest().body(null);
+
+        if(dto.getBoardFile() != null && !dto.getBoardFile().isEmpty()) {
+            String uuid = UUID.randomUUID().toString();
+
+            String fileName = uuid + "_" + dto.getBoardFile().getOriginalFilename();
+            File boardFile = new File(path + "thumbnail" + File.separator + fileName);
+            dto.getBoardFile().transferTo(boardFile);
+            dto.setUrl("http://192.168.10.51:8082/thumbnail/" + File.separator + fileName);
         }
 
-        String uuid = UUID.randomUUID().toString();
-
-        String fileName = uuid + "_" + dto.getBoardFile().getOriginalFilename();
-        File boardFile = new File(path + "thumbnail" + File.separator + fileName);
-        dto.getBoardFile().transferTo(boardFile);
 
 
         Board board = service.create(Board.builder()
-                        .url("http://192.168.10.51:8082/thumbnail/" + File.separator + fileName)
+                        .url(dto.getUrl())
                         .title(dto.getTitle())
                         .writer(dto.getWriter())
                         .content(dto.getContent())
@@ -95,6 +101,7 @@ public class BoardController {
 
     @GetMapping("/board/{no}")
     public ResponseEntity view(@PathVariable(name="no") int no) {
+        log.info("no: " + no);
         return ResponseEntity.ok(service.view(no));
     }
 }
